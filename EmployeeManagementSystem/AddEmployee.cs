@@ -10,20 +10,19 @@ namespace EmployeeManagementSystem
 {
     public partial class AddEmployee : UserControl
     {
-        SqlConnection connect =
-           new SqlConnection(@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\milen\OneDrive\Documents\employee.mdf;Integrated Security=True;Connect Timeout=30");
+        SqlConnection connect = new SqlConnection(
+            @"Server=DESKTOP-8KHVSP4\SQLEXPRESS;Database=EmployeeManagementSystem;Integrated Security=True;");
+
         public AddEmployee()
         {
             InitializeComponent();
-
-            //TO DISPLAY THE DATA FROM DATABASE TO YOU DATA GRID VIEW
             displayEmployeeData();
         }
+
         public void displayEmployeeData()
         {
             EmployeeData employeeData = new EmployeeData();
             List<EmployeeData> listData = employeeData.employeeListData();
-
             dataGridView1.DataSource = listData;
         }
 
@@ -36,91 +35,84 @@ namespace EmployeeManagementSystem
             }
             displayEmployeeData();
         }
+
         private void addEmployee_addBtn_Click(object sender, EventArgs e)
         {
-            if (addEmployee_id.Text == ""
-                || addEmployee_fullName.Text == ""
-                || addEmployee_gender.Text == ""
-                || addEmployee_phoneNumber.Text == ""
-                || addEmployee_position.Text == ""
-                || addEmployee_status.Text == ""
-                || addEmployee_picture.Image == null)
+            if (addEmployee_id.Text == "" ||
+                addEmployee_fullName.Text == "" ||
+                addEmployee_gender.Text == "" ||
+                addEmployee_phoneNumber.Text == "" ||
+                addEmployee_position.Text == "" ||
+                addEmployee_status.Text == "" ||
+                addEmployee_picture.Image == null)
             {
-                MessageBox.Show("Please fill all blank fields.", "Error Message", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Please fill all blank fields.", "Error Message",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
-            else
+
+            try
             {
-                if (connect.State == ConnectionState.Closed)
+                connect.Open();
+
+                string checkQuery = "SELECT COUNT(*) FROM employees " +
+                                    "WHERE employee_id = @emID AND delete_date IS NULL";
+
+                using (SqlCommand checkCmd = new SqlCommand(checkQuery, connect))
                 {
-                    try
+                    checkCmd.Parameters.AddWithValue("@emID", addEmployee_id.Text.Trim());
+                    int count = (int)checkCmd.ExecuteScalar();
+
+                    if (count >= 1)
                     {
-                        connect.Open();
-                        string checkEmId = "SELECT COUNT(*) FROM employees WHERE employee_id = @emID AND delete_date IS NULL";
-
-                        using (SqlCommand checkEm = new SqlCommand(checkEmId, connect))
-                        {
-                            checkEm.Parameters.AddWithValue("@emID", addEmployee_id.Text.Trim());
-
-                            int count = (int)checkEm.ExecuteScalar();
-
-                            if (count >= 1)
-                            {
-                                MessageBox.Show(addEmployee_id.Text.Trim() + " is already taken", "Error Message", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            }
-                            else
-                            {
-                                DateTime today = DateTime.Today;
-                                string insertData = "INSERT INTO employees " +
-                                    "(employee_id, full_name, gender, contact_number, position, image, salary, insert_date, status)" +
-                                    "VALUES(@employeeID, @fullName, @gender, @contactNum, @position, @image, @salary, @insert_date, @status)";
-
-
-                                string path = Path.Combine(@"C:\Users\milen\source\repos\EmployeeManagementSystem\EmployeeManagementSystem\Directory"
-                                + addEmployee_id.Text.Trim() + ".jpg");
-
-                                string directoryPath = Path.GetDirectoryName(path);
-
-                                if (!Directory.Exists(directoryPath))
-                                {
-                                    Directory.CreateDirectory(directoryPath);
-                                }
-
-                                File.Copy(addEmployee_picture.ImageLocation, path, true);
-
-                                using (SqlCommand cmd = new SqlCommand(insertData, connect))
-                                {
-                                    cmd.Parameters.AddWithValue("@employeeID", addEmployee_id.Text.Trim());
-                                    cmd.Parameters.AddWithValue("@fullName", addEmployee_fullName.Text.Trim());
-                                    cmd.Parameters.AddWithValue("@gender", addEmployee_gender.Text.Trim());
-                                    cmd.Parameters.AddWithValue("@contactNum", addEmployee_phoneNumber.Text.Trim());
-                                    cmd.Parameters.AddWithValue("@position", addEmployee_position.Text.Trim());
-                                    cmd.Parameters.AddWithValue("@image", path);
-                                    cmd.Parameters.AddWithValue("@salary", 0);
-                                    cmd.Parameters.AddWithValue("@insert_date", today);
-                                    cmd.Parameters.AddWithValue("@status", addEmployee_status.Text.Trim());
-
-                                    cmd.ExecuteNonQuery();
-
-                                    displayEmployeeData();
-
-                                    MessageBox.Show("Added successfully!",
-                                        "Information Message", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                                    clearFields();
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Error:{ex}", "Error Message"
-                        , MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                    finally
-                    {
-                        connect.Close();
+                        MessageBox.Show("Employee ID already exists!", "Error Message",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
                     }
                 }
+
+                DateTime today = DateTime.Today;
+
+                // FIXED: Đường dẫn ảnh
+                string path = Path.Combine(
+                    @"C:\Users\ADMIN\Pictures\Saved Pictures",
+                    addEmployee_id.Text.Trim() + ".jpg");
+
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                File.Copy(addEmployee_picture.ImageLocation, path, true);
+
+                string insertQuery =
+                    "INSERT INTO employees (employee_id, full_name, gender, contact_number, position, image, salary, insert_date, status) " +
+                    "VALUES (@employeeID, @fullName, @gender, @contactNum, @position, @image, @salary, @insertDate, @status)";
+
+                using (SqlCommand cmd = new SqlCommand(insertQuery, connect))
+                {
+                    cmd.Parameters.AddWithValue("@employeeID", addEmployee_id.Text.Trim());
+                    cmd.Parameters.AddWithValue("@fullName", addEmployee_fullName.Text.Trim());
+                    cmd.Parameters.AddWithValue("@gender", addEmployee_gender.Text.Trim());
+                    cmd.Parameters.AddWithValue("@contactNum", addEmployee_phoneNumber.Text.Trim());
+                    cmd.Parameters.AddWithValue("@position", addEmployee_position.Text.Trim());
+                    cmd.Parameters.AddWithValue("@image", path);
+                    cmd.Parameters.AddWithValue("@salary", 0);
+                    cmd.Parameters.AddWithValue("@insertDate", today);
+                    cmd.Parameters.AddWithValue("@status", addEmployee_status.Text.Trim());
+
+                    cmd.ExecuteNonQuery();
+                }
+
+                displayEmployeeData();
+                MessageBox.Show("Added Successfully!", "Success",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                clearFields();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}", "Error Message",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                connect.Close();
             }
         }
 
@@ -130,46 +122,43 @@ namespace EmployeeManagementSystem
             {
                 OpenFileDialog dialog = new OpenFileDialog();
                 dialog.Filter = "Image Files (*.jpg; *.png)|*.jpg;*.png";
-                string imagePath = "";
+
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    imagePath = dialog.FileName;
-                    addEmployee_picture.ImageLocation = imagePath;
+                    addEmployee_picture.ImageLocation = dialog.FileName;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error:{ex}", "Error Message"
-                        , MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error:{ex}", "Error Message",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex != -1)
+            if (e.RowIndex == -1) return;
+
+            DataGridViewRow row = dataGridView1.Rows[e.RowIndex];
+            addEmployee_id.Text = row.Cells[1].Value.ToString();
+            addEmployee_fullName.Text = row.Cells[2].Value.ToString();
+            addEmployee_gender.Text = row.Cells[3].Value.ToString();
+            addEmployee_phoneNumber.Text = row.Cells[4].Value.ToString();
+            addEmployee_position.Text = row.Cells[5].Value.ToString();
+
+            string imagePath = row.Cells[6].Value.ToString();
+
+            if (File.Exists(imagePath))
             {
-                DataGridViewRow row = dataGridView1.Rows[e.RowIndex];
-                addEmployee_id.Text = row.Cells[1].Value.ToString();
-                addEmployee_fullName.Text = row.Cells[2].Value.ToString();
-                addEmployee_gender.Text = row.Cells[3].Value.ToString();
-                addEmployee_phoneNumber.Text = row.Cells[4].Value.ToString();
-                addEmployee_position.Text = row.Cells[5].Value.ToString();
-
-                string imagePath = row.Cells[6].Value.ToString();
-
-                if (imagePath != null)
-                {
-                    addEmployee_picture.Image = Image.FromFile(imagePath);
-                }
-                else
-                {
-                    addEmployee_picture.Image = null;
-                }
-
-                addEmployee_status.Text = row.Cells[8].Value.ToString();
+                addEmployee_picture.Image = Image.FromFile(imagePath);
             }
-        }
+            else
+            {
+                addEmployee_picture.Image = null;
+            }
 
+            addEmployee_status.Text = row.Cells[8].Value.ToString();
+        }
 
         public void clearFields()
         {
@@ -181,137 +170,104 @@ namespace EmployeeManagementSystem
             addEmployee_status.SelectedIndex = -1;
             addEmployee_picture.Image = null;
         }
+
         private void addEmployee_updateBtn_Click(object sender, EventArgs e)
         {
-            if (addEmployee_id.Text == ""
-                || addEmployee_fullName.Text == ""
-                || addEmployee_gender.Text == ""
-                || addEmployee_phoneNumber.Text == ""
-                || addEmployee_position.Text == ""
-                || addEmployee_status.Text == ""
-                || addEmployee_picture.Image == null)
+            if (addEmployee_id.Text == "" ||
+                addEmployee_fullName.Text == "" ||
+                addEmployee_gender.Text == "" ||
+                addEmployee_phoneNumber.Text == "" ||
+                addEmployee_position.Text == "" ||
+                addEmployee_status.Text == "")
             {
-                MessageBox.Show("Please fill all blank fields.", "Error Message", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Please fill all blank fields.", "Error Message",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
-            else
+
+            try
             {
-                DialogResult check = MessageBox.Show("Are you sure you want to UPDATE " +
-                    "Employee ID: " + addEmployee_id.Text.Trim() + "?", "Confirmation Message",
-                    MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                connect.Open();
+                DateTime today = DateTime.Today;
 
-                if (check == DialogResult.Yes)
+                string updateQuery =
+                    "UPDATE employees SET full_name = @fullName, gender = @gender, contact_number = @contactNum, " +
+                    "position = @position, update_date = @updateDate, status = @status " +
+                    "WHERE employee_id = @employeeID";
+
+                using (SqlCommand cmd = new SqlCommand(updateQuery, connect))
                 {
-                    try
-                    {
-                        connect.Open();
-                        DateTime today = DateTime.Today;
-                        string updateData = "UPDATE employees SET full_name = @fullName, gender = @gender, contact_number = @contactNum"
-                            + ", position = @position, update_date = @updateDate, status = @status " +
-                        "WHERE employee_id = @employeeID";
+                    cmd.Parameters.AddWithValue("@fullName", addEmployee_fullName.Text.Trim());
+                    cmd.Parameters.AddWithValue("@gender", addEmployee_gender.Text.Trim());
+                    cmd.Parameters.AddWithValue("@contactNum", addEmployee_phoneNumber.Text.Trim());
+                    cmd.Parameters.AddWithValue("@position", addEmployee_position.Text.Trim());
+                    cmd.Parameters.AddWithValue("@updateDate", today);
+                    cmd.Parameters.AddWithValue("@status", addEmployee_status.Text.Trim());
+                    cmd.Parameters.AddWithValue("@employeeID", addEmployee_id.Text.Trim()); // FIXED PARAMETER NAME
 
-                        using (SqlCommand cmd = new SqlCommand(updateData, connect))
-                        {
-                            cmd.Parameters.AddWithValue("@fullName", addEmployee_fullName.Text.Trim());
-                            cmd.Parameters.AddWithValue("@gender", addEmployee_gender.Text.Trim());
-                            cmd.Parameters.AddWithValue("@contactNum", addEmployee_phoneNumber.Text.Trim());
-                            cmd.Parameters.AddWithValue("@position", addEmployee_position.Text.Trim());
-                            cmd.Parameters.AddWithValue("@updateDate", today);
-                            cmd.Parameters.AddWithValue("@status", addEmployee_status.Text.Trim());
-                            cmd.Parameters.AddWithValue("@employeeId", addEmployee_id.Text.Trim());
-
-                            cmd.ExecuteNonQuery();
-
-                            displayEmployeeData();
-
-                            MessageBox.Show("Updated successfully!",
-                                "Information Message", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                            clearFields();
-                        }
-
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Error:{ex}", "Error Message"
-                        , MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                    finally
-                    {
-                        connect.Close();
-                    }
+                    cmd.ExecuteNonQuery();
                 }
-                else
+
+                displayEmployeeData();
+                MessageBox.Show("Updated Successfully!", "Success",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                clearFields();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}", "Error Message",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                connect.Close();
+            }
+        }
+
+        private void addEmployee_deleteBtn_Click(object sender, EventArgs e)
+        {
+            if (addEmployee_id.Text == "")
+            {
+                MessageBox.Show("Select an employee first!", "Error Message",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            try
+            {
+                connect.Open();
+                DateTime today = DateTime.Today;
+
+                string deleteQuery =
+                    "UPDATE employees SET delete_date = @deleteDate WHERE employee_id = @employeeID";
+
+                using (SqlCommand cmd = new SqlCommand(deleteQuery, connect))
                 {
-                    MessageBox.Show("Cancelled.", "Information Message"
-                        , MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cmd.Parameters.AddWithValue("@deleteDate", today);
+                    cmd.Parameters.AddWithValue("@employeeID", addEmployee_id.Text.Trim()); // FIXED
+
+                    cmd.ExecuteNonQuery();
                 }
+
+                displayEmployeeData();
+                MessageBox.Show("Deleted Successfully!", "Success",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                clearFields();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}", "Error Message",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                connect.Close();
             }
         }
 
         private void addEmployee_clearBtn_Click(object sender, EventArgs e)
         {
             clearFields();
-        }
-
-        private void addEmployee_deleteBtn_Click(object sender, EventArgs e)
-        {
-            if (addEmployee_id.Text == ""
-                || addEmployee_fullName.Text == ""
-                || addEmployee_gender.Text == ""
-                || addEmployee_phoneNumber.Text == ""
-                || addEmployee_position.Text == ""
-                || addEmployee_status.Text == ""
-                || addEmployee_picture.Image == null)
-            {
-                MessageBox.Show("Please fill all blank fields.", "Error Message", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            else
-            {
-                DialogResult check = MessageBox.Show("Are you sure you want to DELETE " +
-                    "Employee ID: " + addEmployee_id.Text.Trim() + "?", "Confirmation Message",
-                    MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-                if (check == DialogResult.Yes)
-                {
-                    try
-                    {
-                        connect.Open();
-                        DateTime today = DateTime.Today;
-                        string updateData = "UPDATE employees SET delete_date = @deleteDate " + 
-                        "WHERE employee_id = @employeeID";
-
-                        using (SqlCommand cmd = new SqlCommand(updateData, connect))
-                        {
-                            cmd.Parameters.AddWithValue("@deleteDate", today);
-                            cmd.Parameters.AddWithValue("@employeeId", addEmployee_id.Text.Trim());
-
-                            cmd.ExecuteNonQuery();
-
-                            displayEmployeeData();
-
-                            MessageBox.Show("Updated successfully!",
-                                "Information Message", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                            clearFields();
-                        }
-
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Error:{ex}", "Error Message"
-                        , MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                    finally
-                    {
-                        connect.Close();
-                    }
-                }
-                else
-                {
-                    MessageBox.Show("Cancelled.", "Information Message"
-                        , MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-            }
         }
     }
 }

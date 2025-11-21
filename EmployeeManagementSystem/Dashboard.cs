@@ -8,8 +8,8 @@ namespace EmployeeManagementSystem
 {
     public partial class Dashboard : UserControl
     {
-        SqlConnection connect =
-            new SqlConnection(@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\milen\OneDrive\Documents\employee.mdf;Integrated Security=True;Connect Timeout=30");
+
+        SqlConnection connect = new SqlConnection(@"Server=DESKTOP-8KHVSP4\SQLEXPRESS;Database=EmployeeManagementSystem;Integrated Security=True;");
         public Dashboard()
         {
             InitializeComponent();
